@@ -23,10 +23,11 @@ namespace Luaan.Networking1.Server
             listener = new TcpListener(IPAddress.Any, 31224);
             listener.Start();
 
+			// Note that we're not awaiting here - this is going to return almost immediately.
             Listen();
         }
 
-        async void Listen()
+        async Task Listen()
         {
             var client = default(TcpClient);
 
@@ -34,7 +35,7 @@ namespace Luaan.Networking1.Server
             {
                 try
                 {
-                    client = await listener.AcceptTcpClientAsync();
+                    client = await listener.AcceptTcpClientAsync().ConfigureAwait(false);
                 }
                 catch (ObjectDisposedException)
                 {
@@ -44,35 +45,43 @@ namespace Luaan.Networking1.Server
 
                 if (client == null) return;
 
+				// Again, there's no await - the Accept handler is going to return immediately so that we can handle the next client.
                 Accept(client);
             }
         }
 
-        async void Accept(TcpClient client)
+        async Task Accept(TcpClient client)
         {
-            byte[] buffer = new byte[512];
-            int bytesRead;
-            var stream = client.GetStream();
+			// The using makes sure we're going to dispose of the client. This is very easy thanks to await :)
+			using (client)
+			{
+				byte[] buffer = new byte[512];
+				int bytesRead;
+				var stream = client.GetStream();
 
-            var headerRead = 0;
-            while (headerRead < 4 && (bytesRead = await stream.ReadAsync(buffer, headerRead, 4 - headerRead)) > 0 )
-            {
-                headerRead += bytesRead;
-            }
+				// First, we need to know how much data to read. We've got a 4-byte fixed-size header to handle that.
+				// It's unlikely we'd read the header in multiple ReadAsync calls (it's only 4 bytes :)), but it's good practice anyway.
+				var headerRead = 0;
+				while (headerRead < 4 && (bytesRead = await stream.ReadAsync(buffer, headerRead, 4 - headerRead).ConfigureAwait(false)) > 0)
+				{
+					headerRead += bytesRead;
+				}
 
-            if (headerRead < 4) return; // We failed to read the header.
+				if (headerRead < 4) return; // We failed to read the header.
 
-            var bytesRemaining = BitConverter.ToInt32(buffer, 0);
-            
+				var bytesRemaining = BitConverter.ToInt32(buffer, 0);
 
-            while (bytesRemaining > 0 && (bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length)) != 0)
-            {
-                await stream.WriteAsync(buffer, 0, bytesRead);
+				// Now we know how much we have to read, so let's read everything and write it back out.
+				while (bytesRemaining > 0 && (bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length)) != 0)
+				{
+					await stream.WriteAsync(buffer, 0, bytesRead);
 
-                bytesRemaining -= bytesRead;
-            }
+					bytesRemaining -= bytesRead;
+				}
 
-            if (bytesRemaining == 0) client.Close(); // Do a graceful shutdown
+				// If ReadAsync returns zero, it means the connection was closed from the other side. If it doesn't, we have to close it ourselves.
+				if (bytesRead != 0) client.Close(); // Do a graceful shutdown
+			}
         }
 
         public void Stop()
