@@ -27,7 +27,7 @@ namespace Luaan.Networking2.Server
 
 			// Note that we're not awaiting here - this is going to return almost immediately. 
 			// We're storing the task in a variable to make it explicit that this is not a case of forgotten await :)
-			var t = Listen();
+			var _ = Listen();
 		}
 
 		async Task Listen()
@@ -49,7 +49,7 @@ namespace Luaan.Networking2.Server
 				if (client == null) return;
 
 				// Again, there's no await - the Accept handler is going to return immediately so that we can handle the next client.
-				var t = Accept(client);
+				var _ = Accept(client);
 			}
 		}
 

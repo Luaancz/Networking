@@ -34,30 +34,37 @@ namespace Luaan.Networking2.Client
 
 				try
 				{
+					// Simple connect as always. We're going to keep the callbacks on the UI thread this time, though - every await is followed by some UI operation anyway.
 					await client.ConnectAsync("localhost", 31224);
 
+					// We're connected now, so allow disconnects.
 					btnDisconnect.Enabled = true;
 
 					cancellationTokenSource = new CancellationTokenSource();
-
 					stream = client.GetStream();
 
+					// We'll send the login request. If the server disconnects us, we'll know by reading the next message from the network stream.
 					await stream.SendStringMessage(MessageId.LoginRequest, tbxName.Text);
 
 					var cancellationToken = cancellationTokenSource.Token;
-
 					var cancellationTask = cancellationToken.AsTask();
+
 					grpChat.Enabled = true;
 					while (!cancellationToken.IsCancellationRequested)
 					{
+						// Start asynchronous I/O request for the next message from server
 						var messageTask = stream.ReadRawMessage();
 
+						// We'll wait for either a new message, or a cancellation - this allows us to close the connection when the disconnect button is clicked.
 						await Task.WhenAny(messageTask, cancellationTask);
 
+						// Do we have a message?
 						if (messageTask.IsCompleted)
 						{
+							// Get the actual message from the task, or an exception. This would be the place to handle the exception.
 							byte[] message = messageTask.GetAwaiter().GetResult();
 
+							// Oh, the server closed the connection. What can you do :)
 							if (message == null)
 							{
 								tbxChat.AppendText(string.Format("Disconnected by server.{0}", Environment.NewLine));
@@ -65,10 +72,12 @@ namespace Luaan.Networking2.Client
 								return;
 							}
 
+							// Let's find out what message it is...
 							switch ((MessageId)message[0])
 							{
 								case MessageId.ChatMessage:
 									{
+										// Just write the chat messages to the chat window.
 										tbxChat.AppendText(Encoding.UTF8.GetString(message, 1, message.Length - 1) + Environment.NewLine);
 
 										break;
@@ -82,11 +91,12 @@ namespace Luaan.Networking2.Client
 							}
 						}
 
+						// Did we click Disconnect?
 						if (cancellationTask.IsCompleted)
 						{
 							tbxChat.AppendText(string.Format("Disconnecting{0}", Environment.NewLine));
 
-							break;
+							return;
 						}
 					}
 				}
@@ -111,6 +121,7 @@ namespace Luaan.Networking2.Client
 			{
 				btnSend.Enabled = false;
 
+				// Only send if we have a connection open
 				if (btnDisconnect.Enabled)
 				{
 					var messageBytes = Encoding.UTF8.GetByteCount(tbxMessage.Text);
@@ -119,17 +130,11 @@ namespace Luaan.Networking2.Client
 					data[0] = (byte)MessageId.ChatMessage;
 					Encoding.UTF8.GetBytes(tbxMessage.Text, 0, tbxMessage.Text.Length, data, 1);
 
-					try
-					{
-						tbxMessage.Enabled = false;
-						await stream.SendRawMessage(data);
-					}
-					finally
-					{
-						tbxMessage.Enabled = true;
-					}
-
+					// Empty the message textbox - this allows the user to start typing the next message while waiting for the one being sent.
+					// This way is a bit tricky when doing proper error handling - what if SendRawMessage fails?
 					tbxMessage.Text = string.Empty;
+
+					await stream.SendRawMessage(data);
 				}
 			}
 			finally
@@ -140,6 +145,7 @@ namespace Luaan.Networking2.Client
 
 		private void btnDisconnect_Click(object sender, EventArgs e)
 		{
+			// Signal the connection handler to close the connection
 			if (cancellationTokenSource != null) cancellationTokenSource.Cancel();
 		}
 	}

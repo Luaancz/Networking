@@ -19,11 +19,17 @@ namespace Luaan.Networking2.Server
 		public ServerMain()
 		{
 			this.users = new ConcurrentDictionary<string, LoginInformation>();
+
+			// This allows us to safely invoke Broadcast. Since we assume that there's going to be multiple clients, this is a good trade-off.
 			Broadcast += _ => {};
 		}
 
 		private event Action<byte[]> Broadcast;
 
+		/// <summary>
+		/// Broadcasts the specified chat message to all connected clients.
+		/// </summary>
+		/// <param name="message">The message text.</param>
 		void BroadcastChatMessage(string message)
 		{
 			Console.WriteLine(message);
@@ -45,19 +51,17 @@ namespace Luaan.Networking2.Server
 
 				var login = default(LoginInformation);
 
-				// Note that local variables are effectively local with respect to any individual connection. Pretty handy.
+				// Note that local variables are effectively local with respect to any individual connection. Pretty handy - we get a state machine for free.
 				try
 				{
+					// Start the login process
 					login = await HandleLogin(stream);
 
-					if (login == null)
-					{
-						client.Close();
-						return;
-					}
+					if (login == null) return;
 
 					CancellationToken.ThrowIfCancellationRequested();
 
+					// Start the main chat message loop
 					await HandleChat(stream, login);
 				}
 				finally
@@ -103,6 +107,7 @@ namespace Luaan.Networking2.Server
 
 		async Task HandleChat(Stream stream, LoginInformation login)
 		{
+			// Buffer block allows us to easily post messages from our broadcast event handler to our main loop
 			var queuedMessages = new BufferBlock<byte[]>();
 			
 			Action<byte[]> broadcastHandler =
@@ -120,18 +125,24 @@ namespace Luaan.Networking2.Server
 				
 				while (!CancellationToken.IsCancellationRequested)
 				{
+					// We'll wait for either data from the client, or a broadcast message from the server
 					await Task.WhenAny(readTask, broadcastTask);
 
+					// Did we read some data from the client?
 					if (readTask.IsCompleted)
 					{
+						// Get the message. If there was an exception during the task, it will be rethrown here.
 						var message = readTask.GetAwaiter().GetResult();
 
+						// The client disconnected - we're done.
 						if (message == null) return;
 
+						// What kind of message did we receive?
 						switch ((MessageId)message[0])
 						{
 							case MessageId.ChatMessage:
 								{
+									// Broadcast all incoming messages to everyone
 									BroadcastChatMessage(string.Format("{0}> {1}", login.Name, Encoding.UTF8.GetString(message, 1, message.Length - 1)));
 
 									break;
@@ -144,21 +155,27 @@ namespace Luaan.Networking2.Server
 								}
 						}
 
+						// Start another asynchronous I/O request
 						readTask = stream.ReadRawMessage();
 					}
 
+					// Do we have any broadcast messages to send?
 					if (broadcastTask.IsCompleted)
 					{
+						// Get the message. If there was an exception during the task, it will be rethrown here.
 						var broadcastMessage = broadcastTask.GetAwaiter().GetResult();
 
+						// The message is ready to be sent as-is, so just go ahead
 						await stream.SendRawMessage(broadcastMessage);
 
+						// Start another wait for broadcast messages
 						broadcastTask = queuedMessages.ReceiveAsync(CancellationToken);
 					}
 				}
 			}
 			finally
 			{
+				// We have to unregister the broadcast message handler. This is quite important - global event handlers are a great way to introduce memory leaks :)
 				Broadcast -= broadcastHandler;
 			}
 		}
