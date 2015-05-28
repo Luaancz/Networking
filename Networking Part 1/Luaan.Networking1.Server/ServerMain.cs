@@ -9,50 +9,50 @@ using System.Threading.Tasks;
 
 namespace Luaan.Networking1.Server
 {
-    public class ServerMain
-    {
-        private TcpListener listener;
-        private CancellationTokenSource cts;
-        private CancellationToken token;
+	public class ServerMain
+	{
+		private TcpListener listener;
+		private CancellationTokenSource cts;
+		private CancellationToken token;
 
-        public void Start()
-        {
-            cts = new CancellationTokenSource();
-            token = cts.Token;
+		public void Start()
+		{
+			cts = new CancellationTokenSource();
+			token = cts.Token;
 
-            listener = new TcpListener(IPAddress.Any, 31224);
-            listener.Start();
+			listener = new TcpListener(IPAddress.Any, 31224);
+			listener.Start();
 
 			// Note that we're not awaiting here - this is going to return almost immediately. 
 			// We're storing the task in a variable to make it explicit that this is not a case of forgotten await :)
-            var t = Listen();
-        }
+			var t = Listen();
+		}
 
-        async Task Listen()
-        {
-            var client = default(TcpClient);
+		async Task Listen()
+		{
+			var client = default(TcpClient);
 
-            while (!token.IsCancellationRequested)
-            {
-                try
-                {
-                    client = await listener.AcceptTcpClientAsync().ConfigureAwait(false);
-                }
-                catch (ObjectDisposedException)
-                {
-                    // The listener has been stopped.
-                    return;
-                }
+			while (!token.IsCancellationRequested)
+			{
+				try
+				{
+					client = await listener.AcceptTcpClientAsync().ConfigureAwait(false);
+				}
+				catch (ObjectDisposedException)
+				{
+					// The listener has been stopped.
+					return;
+				}
 
-                if (client == null) return;
+				if (client == null) return;
 
 				// Again, there's no await - the Accept handler is going to return immediately so that we can handle the next client.
-                var t = Accept(client);
-            }
-        }
+				var t = Accept(client);
+			}
+		}
 
-        async Task Accept(TcpClient client)
-        {
+		async Task Accept(TcpClient client)
+		{
 			// The using makes sure we're going to dispose of the client. This is very easy thanks to await :)
 			using (client)
 			{
@@ -84,12 +84,12 @@ namespace Luaan.Networking1.Server
 				// If ReadAsync returns zero, it means the connection was closed from the other side. If it doesn't, we have to close it ourselves.
 				if (bytesRead != 0) client.Close(); // Do a graceful shutdown
 			}
-        }
+		}
 
-        public void Stop()
-        {
-            cts.Cancel();
-            listener.Stop();
-        }
-    }
+		public void Stop()
+		{
+			cts.Cancel();
+			listener.Stop();
+		}
+	}
 }

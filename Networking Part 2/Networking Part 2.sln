@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.31101.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Luaan.Networking2.Server", "Luaan.Networking2.Server\Luaan.Networking2.Server.csproj", "{8845F223-CFCA-4CB8-BD3F-3921667CE9EF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Luaan.Networking2.Client", "Luaan.Networking2.Client\Luaan.Networking2.Client.csproj", "{47349A81-9925-411B-9641-943B915C44F7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Luaan.Networking2.Messages", "Luaan.Networking2.Messages\Luaan.Networking2.Messages.csproj", "{A86170F1-506C-4E34-AE79-5EDC14061EEE}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8845F223-CFCA-4CB8-BD3F-3921667CE9EF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8845F223-CFCA-4CB8-BD3F-3921667CE9EF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8845F223-CFCA-4CB8-BD3F-3921667CE9EF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8845F223-CFCA-4CB8-BD3F-3921667CE9EF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{47349A81-9925-411B-9641-943B915C44F7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{47349A81-9925-411B-9641-943B915C44F7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{47349A81-9925-411B-9641-943B915C44F7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{47349A81-9925-411B-9641-943B915C44F7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A86170F1-506C-4E34-AE79-5EDC14061EEE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A86170F1-506C-4E34-AE79-5EDC14061EEE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A86170F1-506C-4E34-AE79-5EDC14061EEE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A86170F1-506C-4E34-AE79-5EDC14061EEE}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
