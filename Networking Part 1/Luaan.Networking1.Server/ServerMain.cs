@@ -23,8 +23,9 @@ namespace Luaan.Networking1.Server
             listener = new TcpListener(IPAddress.Any, 31224);
             listener.Start();
 
-			// Note that we're not awaiting here - this is going to return almost immediately.
-            Listen();
+			// Note that we're not awaiting here - this is going to return almost immediately. 
+			// We're storing the task in a variable to make it explicit that this is not a case of forgotten await :)
+            var t = Listen();
         }
 
         async Task Listen()
@@ -46,7 +47,7 @@ namespace Luaan.Networking1.Server
                 if (client == null) return;
 
 				// Again, there's no await - the Accept handler is going to return immediately so that we can handle the next client.
-                Accept(client);
+                var t = Accept(client);
             }
         }
 
@@ -56,7 +57,7 @@ namespace Luaan.Networking1.Server
 			using (client)
 			{
 				byte[] buffer = new byte[512];
-				int bytesRead;
+				var bytesRead = 0;
 				var stream = client.GetStream();
 
 				// First, we need to know how much data to read. We've got a 4-byte fixed-size header to handle that.
@@ -70,6 +71,7 @@ namespace Luaan.Networking1.Server
 				if (headerRead < 4) return; // We failed to read the header.
 
 				var bytesRemaining = BitConverter.ToInt32(buffer, 0);
+				Console.WriteLine("Receiving {0} bytes.", bytesRemaining);
 
 				// Now we know how much we have to read, so let's read everything and write it back out.
 				while (bytesRemaining > 0 && (bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length)) != 0)

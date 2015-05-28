@@ -19,6 +19,20 @@ namespace Luaan.Networking1.Client
             InitializeComponent();
         }
 
+		private async Task<NetworkStream> ConnectAndSend(TcpClient client, byte[] data)
+		{
+			// We don't want to proceed on the UI thread - this will prevent marshalling back to the UI thread in the scope of this method.
+			await client.ConnectAsync("localhost", 31224).ConfigureAwait(false);
+
+			var stream = client.GetStream();
+
+			// Why the ConfigureAwait(false) here? It's possible (though *highly* unlikely) that the preceding await completed synchronously.
+			// That would mean we'd actually be continuing on the GUI thread, which we don't want - yet.
+			await Task.WhenAll(stream.WriteAsync(BitConverter.GetBytes(data.Length), 0, 4), stream.WriteAsync(data, 0, data.Length)).ConfigureAwait(false);
+
+			return stream;
+		}
+
 		private async Task SendAndWaitForResponse()
 		{
 			var data = UTF8Encoding.UTF8.GetBytes(tbxInput.Text);
@@ -26,14 +40,10 @@ namespace Luaan.Networking1.Client
 
 			using (var client = new TcpClient())
 			{
-				await client.ConnectAsync("localhost", 31224).ConfigureAwait(false);
+				// Most of ConnectAndSend will happen on a thread-pool thread, but this await will bring us back to the UI thread.
+				var stream = await ConnectAndSend(client, data);
 
-				var stream = client.GetStream();
 				var buffer = new byte[512];
-
-				// Why the ConfigureAwait(false) here? It's possible (though *highly* unlikely) that the preceding await completed synchronously.
-				// That would mean we'd actually be continuing on the GUI thread, which we don't want - yet.
-				await Task.WhenAll(stream.WriteAsync(BitConverter.GetBytes(data.Length), 0, 4), stream.WriteAsync(data, 0, data.Length)).ConfigureAwait(false);
 
 				int bytesRead;
 				// Decoder is useful in properly handling multi-byte character encodings - it will only emit "complete" characters, so we're not going to
@@ -43,7 +53,7 @@ namespace Luaan.Networking1.Client
 				var charBuffer = new char[512];
 
 				// Get back on the GUI thread - we need to modify the tbxLog control, which can only be done from the GUI thread.
-				while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length).ConfigureAwait(true)) != 0)
+				while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length)) != 0)
 				{
 					var charsRead = decoder.GetChars(buffer, 0, bytesRead, charBuffer, 0);
 
